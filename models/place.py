@@ -37,8 +37,9 @@ class Place(BaseModel, Base):
     amenity_ids = []
 
     if os.getenv("HBNB_TYPE_STORAGE") == "db":
-        reviews = relationship("Review", backref="place")
-        amenities = relationship("Amenity", secondary="place_amenity",
+        reviews = relationship("Review", backref="place",
+                              cascade="all, delete-orphan")
+        amenities = relationship("Amenity", secondary=place_amenity,
                                  viewonly=False,
                                  back_populates="place_amenities")
 
@@ -60,12 +61,15 @@ class Place(BaseModel, Base):
 
             amenities = list(models.storage.all(Amenity).values())
 
+            amenity_ids = self.amenity_ids if self.amenity_ids is not Place.amenity_ids else []
             return list(
-                filter(lambda amenity: (amenity.place_id in self.amenity_ids),
+                filter(lambda amenity: (amenity.id in amenity_ids),
                        amenities))
 
         @amenities.setter
         def amenities(self, value=None):
-            """Adds ids in amenity_ids ."""
-            if isinstance(value, type(Amenity)):
+            """Adds ids in amenity_ids. Accepts only Amenity object."""
+            if isinstance(value, Amenity):
+                if self.amenity_ids is Place.amenity_ids:
+                    self.amenity_ids = []
                 self.amenity_ids.append(value.id)
